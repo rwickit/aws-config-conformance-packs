@@ -1,5 +1,5 @@
 ---
-name: "Deliver Prod Resources to S3"
+name: "Deliver Resources to S3"
 
 # Trigger when commits are pushed to the master branch
 
