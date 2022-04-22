@@ -5,9 +5,9 @@ name: "GovCLoud - Deliver Resources to S3"
 
 on:
   push:
-    branches:
-      - master
-      - main
+    # branches:
+    #   - master
+    #   - main
 
 env:
 
