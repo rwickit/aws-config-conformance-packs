@@ -1,0 +1,88 @@
+---
+name: "Deliver - GovCloud"
+
+# Trigger when commits are pushed to the master branch
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+env:
+
+  ## GLOBAL VARIABLES
+
+  ### GovCloud
+  GOV_NAME: ${{ secrets.GOV_AWS_ROLE_SESSION_NAME }}
+  GOV_DURATION: ${{ secrets.GOV_AWS_ROLE_SESSION_DURATION }}
+  GOV_REGION: ${{ secrets.GOV_AWS_DEFAULT_REGION }}
+  GOV_ROLE: ${{ secrets.GOV_ROLE_ARN_DELIVERY }}
+
+  ## PROJECT VARIABLES
+  BUCKET: solutions.rwick.it
+  PREFIX: config-conformance-packs
+  TEMPLATES: cloudformation
+  SCRIPTS: lambda
+
+jobs:
+
+  GovCloud-Templates:
+    name: GovCloud - Deliver Templates to S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.GOV_NAME }}
+        role-duration-seconds: ${{ env.GOV_DURATION }}
+        aws-region: ${{ env.GOV_REGION }}
+        role-to-assume: ${{ env.GOV_ROLE }}
+
+    - name: Sync Templates to S3
+      run: |
+        aws s3 sync ${{ env.TEMPLATES }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.TEMPLATES }}
+
+  GovCloud-Scripts:
+    name: GovCloud - Deliver Scripts to S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.GOV_NAME }}
+        role-duration-seconds: ${{ env.GOV_DURATION }}
+        aws-region: ${{ env.GOV_REGION }}
+        role-to-assume: ${{ env.GOV_ROLE }}
+
+    - name: Zip CloudFormation Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: cloudformation.zip
+        directory: ${{ env.SCRIPTS }}/cloudformation
+
+    - name: Zip Organizations Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: organization.zip
+        directory: ${{ env.SCRIPTS }}/organization
+
+    - name: Sync Scripts to S3
+      id: sync-s3
+      run: |
+        aws s3 sync ${{ env.SCRIPTS }}/cloudformation s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }} --exclude *.py
+        aws s3 sync ${{ env.SCRIPTS }}/organization s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }} --exclude *.py

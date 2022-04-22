@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Management Account CloudFormation Validation Conformance Pack'
+
+Parameters:
+
+  CfnFunctionArn:
+    Type: String
+
+  MaximumExecutionFrequency:
+    Type: String
+    Default: One_Hour
+    AllowedValues:
+      - One_Hour
+      - Three_Hours
+      - Six_Hours
+      - Twelve_Hours
+      - TwentyFour_Hours
+
+Resources:
+
+  ValidationConformancePackStack:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cfn-config-validation-conformance-pack
+      InputParameters:
+        stack-name: config-validation-conformance-pack
+      Description: Checks if the CFN Stack is deployed
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::CloudFormation::Stack
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: !Ref CfnFunctionArn
+        SourceDetails:
+          - EventSource: aws.config
+            MessageType: ScheduledNotification
+            MaximumExecutionFrequency: !Ref MaximumExecutionFrequency

@@ -1,0 +1,51 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Validation Conformance Pack - DO NOT DELETE'
+
+Parameters:
+
+  DeploymentOUs:
+    Description: Which ORG OU(s) is this deploying to
+    Type: String
+    MinLength: 1
+
+  Nonce:
+    Type: String
+    Description: Random value used to generate new version of lambda function
+
+  Regions:
+    Description: Which regions is this deploying to
+    Type: String
+    MinLength: 1
+
+  ResourceBucket:
+    Description: S3 Bucket where resources are stored.
+    Type: String
+
+Resources:
+
+  ConformancePackStackSet:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      StackSetName: validation-conformance-pack
+      Description: Validation Conformance Pack - DO NOT DELETE
+      PermissionModel: SERVICE_MANAGED
+      AutoDeployment:
+        Enabled: true
+        RetainStacksOnAccountRemoval: false
+      Capabilities:
+        - CAPABILITY_IAM
+        - CAPABILITY_NAMED_IAM
+        - CAPABILITY_AUTO_EXPAND
+      StackInstancesGroup:
+        - Regions:
+            !Split [ "," , !Ref Regions ]
+          DeploymentTargets:
+            OrganizationalUnitIds:
+              - !Ref DeploymentOUs
+      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/validation-conformance-pack.yml
+      Parameters:
+        - ParameterKey: AccountType
+          ParameterValue: workload
+        - ParameterKey: Nonce
+          ParameterValue: Nonce

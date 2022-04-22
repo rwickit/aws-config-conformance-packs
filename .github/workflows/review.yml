@@ -1,0 +1,54 @@
+---
+name: Review - CloudFormation
+
+# Triggered on all push events
+
+on:
+  push:
+    branches-ignore:
+      - master
+      - main
+
+jobs:
+
+  checkov:
+    name: Checkov
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: grolston/cfn-security@v1
+      with:
+        cloudformation_directory: './cloudformation/' ## change to your template directory
+        scanner: "checkov"
+
+  cfn-nag:
+    name: Cfn-Nag
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: grolston/cfn-security@v1
+      with:
+        cloudformation_directory: './cloudformation/' ## change to your template directory
+        scanner: "cfn-nag"
+
+  cfn-lint:
+    name: Cfn-Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: grolston/cfn-security@v1
+      with:
+        cloudformation_directory: './cloudformation/' ## change to your template directory
+        scanner: "cfn-lint"
+
+  cfn-guard:
+    runs-on: ubuntu-latest
+    name: Cfn-Guard
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Cloudformation Guard Checks
+      uses: maskerade/cfn-guard-action@master
+      with:
+        cfn_subdirectory: 'cloudformation'

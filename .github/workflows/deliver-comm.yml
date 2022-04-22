@@ -1,0 +1,88 @@
+---
+name: "Deliver - Commercial"
+
+# Trigger when commits are pushed to the master branch
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+env:
+
+  ## GLOBAL VARIABLES
+
+  ### Commercial
+  COM_NAME: ${{ secrets.COM_AWS_ROLE_SESSION_NAME }}
+  COM_DURATION: ${{ secrets.COM_AWS_ROLE_SESSION_DURATION }}
+  COM_REGION: ${{ secrets.COM_AWS_DEFAULT_REGION }}
+  COM_ROLE: ${{ secrets.COM_ROLE_ARN_DELIVERY }}
+
+  ## PROJECT VARIABLES
+  BUCKET: solutions.rwick.it
+  PREFIX: config-conformance-packs
+  TEMPLATES: cloudformation
+  SCRIPTS: lambda
+
+jobs:
+
+  Commercial-Templates:
+    name: Commercial - Deliver Templates to S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.COM_NAME }}
+        role-duration-seconds: ${{ env.COM_DURATION }}
+        aws-region: ${{ env.COM_REGION }}
+        role-to-assume: ${{ env.COM_ROLE }}
+
+    - name: Sync Templates to S3
+      run: |
+        aws s3 sync ${{ env.TEMPLATES }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.TEMPLATES }}
+
+  Commercial-Scripts:
+    name: Commercial - Deliver Scripts to S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.COM_NAME }}
+        role-duration-seconds: ${{ env.COM_DURATION }}
+        aws-region: ${{ env.COM_REGION }}
+        role-to-assume: ${{ env.COM_ROLE }}
+
+    - name: Zip CloudFormation Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: cloudformation.zip
+        directory: ${{ env.SCRIPTS }}/cloudformation
+
+    - name: Zip Organizations Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: organization.zip
+        directory: ${{ env.SCRIPTS }}/organization
+
+    - name: Sync Scripts to S3
+      id: sync-s3
+      run: |
+        aws s3 sync ${{ env.SCRIPTS }}/cloudformation s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }} --exclude *.py
+        aws s3 sync ${{ env.SCRIPTS }}/organization s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }} --exclude *.py
