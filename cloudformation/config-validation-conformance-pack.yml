@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Validation Conformance Pack - DO NOT DELETE'
+
+Parameters:
+
+  ResourceBucket:
+    Description: S3 Bucket where resources are stored.
+    Type: String
+    Default: 'solutions.rwick.it'
+
+  ProjectName:
+    Description: Name of project prefix in bucket
+    Type: String
+    Default: 'config-conformance-packs'
+
+  AccountType:
+    Description: Which type of account is this being deployed to?
+    Type: String
+    AllowedValues:
+      - "management"
+      - "workload"
+
+  Nonce:
+    Type: String
+    Description: Random value used to generate new version of lambda function
+
+Conditions:
+
+  IsManagementAccount: !Equals [ !Ref AccountType, "management" ]
+
+Mappings:
+
+  AccountType:
+    management:
+      cfn: s3://solutions.rwick.it/config-conformance-packs/cloudformation/rules-mgmt-cloudformation.yml
+      org: s3://solutions.rwick.it/config-conformance-packs/cloudformation/rules-mgmt-organization.yml
+    workload:
+      cfn: s3://solutions.rwick.it/config-conformance-packs/cloudformation/rules-wkld-cloudformation.yml
+      org: '' ## No Organization rules in workload accounts
+
+Resources:
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub lambda-validation-conformance-pack-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+       - !Sub arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess
+       - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+       - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSConfigRulesExecutionRole
+
+  CfnFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub
+        - cloudformation-validation-v${version}
+        - { version: !Ref Nonce }
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.8
+      Handler: index.lambda_handler
+      Timeout: 300
+      Code:
+        S3Bucket: !Ref ResourceBucket
+        S3Key: !Sub ${ProjectName}/lambda/cloudformation.zip
+
+  CfnLambdaPermissions:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt CfnFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: config.amazonaws.com
+      SourceAccount: !Sub ${AWS::AccountId}
+
+  CfnConformancePack:
+    Type: AWS::Config::ConformancePack
+    Properties:
+      ConformancePackName: cloudformation-validation
+      TemplateS3Uri: !FindInMap [AccountType, !Ref AccountType, cfn]
+      ConformancePackInputParameters:
+        - ParameterName: CfnFunctionArn
+          ParameterValue: !GetAtt CfnFunction.Arn
+
+  OrgFunction:
+    Condition: IsManagementAccount
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub
+        - organization-validation-v${version}
+        - { version: !Ref Nonce }
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.8
+      Handler: index.lambda_handler
+      Timeout: 300
+      Code:
+        S3Bucket: !Ref ResourceBucket
+        S3Key: !Sub ${ProjectName}/lambda/organization.zip
+
+  OrgLambdaPermissions:
+    Condition: IsManagementAccount
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt OrgFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: config.amazonaws.com
+      SourceAccount: !Sub ${AWS::AccountId}
+
+  OrgConformancePack:
+    Condition: IsManagementAccount
+    Type: AWS::Config::ConformancePack
+    Properties:
+      ConformancePackName: organization-validation
+      TemplateS3Uri: !FindInMap [AccountType, !Ref AccountType, org]
+      ConformancePackInputParameters:
+        - ParameterName: OrgFunctionArn
+          ParameterValue: !GetAtt OrgFunction.Arn
