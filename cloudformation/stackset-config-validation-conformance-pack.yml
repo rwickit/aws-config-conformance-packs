@@ -4,23 +4,29 @@ Description: 'Validation Conformance Pack - DO NOT DELETE'
 
 Parameters:
 
+  ResourceBucket:
+    Description: S3 Bucket where resources are stored.
+    Type: String
+    Default: 'solutions.rwick.it'
+
+  ProjectName:
+    Description: Name of project prefix in bucket
+    Type: String
+    Default: 'config-conformance-packs'
+
   DeploymentOUs:
     Description: Which ORG OU(s) is this deploying to
     Type: String
     MinLength: 1
-
-  Nonce:
-    Type: String
-    Description: Random value used to generate new version of lambda function
 
   Regions:
     Description: Which regions is this deploying to
     Type: String
     MinLength: 1
 
-  ResourceBucket:
-    Description: S3 Bucket where resources are stored.
+  Nonce:
     Type: String
+    Description: Random value used to generate new version of lambda function
 
 Resources:
 
@@ -43,9 +49,9 @@ Resources:
           DeploymentTargets:
             OrganizationalUnitIds:
               - !Ref DeploymentOUs
-      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/validation-conformance-pack.yml
+      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/${ProjectName}/cloudformaion/validation-conformance-pack.yml
       Parameters:
         - ParameterKey: AccountType
           ParameterValue: workload
         - ParameterKey: Nonce
-          ParameterValue: Nonce
+          ParameterValue: !Ref Nonce
