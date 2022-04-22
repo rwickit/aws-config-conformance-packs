@@ -49,7 +49,7 @@ Resources:
           DeploymentTargets:
             OrganizationalUnitIds:
               - !Ref DeploymentOUs
-      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/${ProjectName}/cloudformaion/validation-conformance-pack.yml
+      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/${ProjectName}/cloudformation/validation-conformance-pack.yml
       Parameters:
         - ParameterKey: AccountType
           ParameterValue: workload
