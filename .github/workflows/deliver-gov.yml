@@ -1,5 +1,5 @@
 ---
-name: "GovCLoud - Deliver Resources to S3"
+name: "Deliver GovCloud"
 
 # Trigger when commits are pushed to the master branch
 
@@ -84,4 +84,5 @@ jobs:
     - name: Sync Scripts to S3
       id: sync-s3
       run: |
-        aws s3 sync ${{ env.SCRIPTS }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }}
+        aws s3 cp ${{ env.SCRIPTS }}/cloudformation s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }}/cloudformation.zip
+        aws s3 cp ${{ env.SCRIPTS }}/organization s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }}/organization.zip
