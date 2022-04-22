@@ -27,6 +27,11 @@ Resources:
   ## SCPs
   MspScp:
     Type: AWS::Config::ConfigRule
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: E3030
+            reason: Use of AWS::::Account required for Custom Config Rule
     Properties:
       ConfigRuleName: scp-Test-SCP
       InputParameters:
