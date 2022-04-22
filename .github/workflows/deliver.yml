@@ -5,9 +5,9 @@ name: "Deliver Resources to S3"
 
 on:
   push:
-    # branches:
-    #   - master
-    #   - main
+    branches:
+      - master
+      - main
 
 env:
 
@@ -97,7 +97,7 @@ jobs:
 
   ## GOVCLOUD JOBS
 
-  GovCloud:
+  GovCloud-Templates:
     name: GovCloud - Deliver Templates to S3
     runs-on: ubuntu-latest
     permissions:
@@ -115,6 +115,43 @@ jobs:
         aws-region: ${{ env.GOV_REGION }}
         role-to-assume: ${{ env.GOV_ROLE }}
 
-    - name: Sync Templates S3
+    - name: Sync Templates to S3
       run: |
         aws s3 sync ${{ env.TEMPLATES }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.TEMPLATES }}
+
+  GovCloud-Scripts:
+    name: GovCloud - Deliver Scripts to S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.GOV_NAME }}
+        role-duration-seconds: ${{ env.GOV_DURATION }}
+        aws-region: ${{ env.GOV_REGION }}
+        role-to-assume: ${{ env.GOV_ROLE }}
+
+    - name: Zip CloudFormation Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: cloudformation.zip
+        directory: ${{ env.SCRIPTS }}/cloudformation
+
+    - name: Zip Organizations Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: organization.zip
+        directory: ${{ env.SCRIPTS }}/organization
+
+    - name: Sync Scripts to S3
+      id: sync-s3
+      run: |
+        aws s3 sync ${{ env.SCRIPTS }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }}
