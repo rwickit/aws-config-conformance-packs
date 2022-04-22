@@ -3,17 +3,22 @@ Description: 'Validation Conformance Pack - DO NOT DELETE'
 
 Parameters:
 
+  ResourceBucket:
+    Description: S3 Bucket where resources are stored.
+    Type: String
+    Default: 'solutions.rwick.it'
+
+  ProjectName:
+    Description: Name of project prefix in bucket
+    Type: String
+    Default: 'config-conformance-packs'
+
   AccountType:
     Description: Which type of account is this being deployed to?
     Type: String
     AllowedValues:
       - "management"
       - "workload"
-
-  ResourceBucket:
-    Description: S3 Bucket where resources are stored.
-    Type: String
-    Default: 'rwickit-demo'
 
   Nonce:
     Type: String
@@ -27,10 +32,10 @@ Mappings:
 
   AccountType:
     management:
-      cfn: s3://rwickit-demo/rules-mgmt-cloudformation.yml
-      org: s3://rwickit-demo/rules-mgmt-organization.yml
+      cfn: s3://solutions.rwick.it/config-conformance-packs/cloudformation/rules-mgmt-cloudformation.yml
+      org: s3://solutions.rwick.it/config-conformance-packs/cloudformation/rules-mgmt-organization.yml
     workload:
-      cfn: s3://rwickit-demo/rules-wkld-cloudformation.yml
+      cfn: s3://solutions.rwick.it/config-conformance-packs/cloudformation/rules-wkld-cloudformation.yml
       org: '' ## No Organization rules in workload accounts
 
 Resources:
@@ -59,14 +64,14 @@ Resources:
     Properties:
       FunctionName: !Sub
         - cloudformation-validation-v${version}
-        - { version: !Ref Nonce}
+        - { version: !Ref Nonce }
       Role: !GetAtt LambdaRole.Arn
       Runtime: python3.8
       Handler: index.lambda_handler
       Timeout: 300
       Code:
         S3Bucket: !Ref ResourceBucket
-        S3Key: lambda/cloudformation.zip
+        S3Key: !Sub ${ProjectName}/lambda/cloudformation.zip
 
   CfnLambdaPermissions:
     Type: 'AWS::Lambda::Permission'
@@ -91,14 +96,14 @@ Resources:
     Properties:
       FunctionName: !Sub
         - organization-validation-v${version}
-        - { version: !Ref Nonce}
+        - { version: !Ref Nonce }
       Role: !GetAtt LambdaRole.Arn
       Runtime: python3.8
       Handler: index.lambda_handler
       Timeout: 300
       Code:
         S3Bucket: !Ref ResourceBucket
-        S3Key: lambda/organization.zip
+        S3Key: !Sub ${ProjectName}/lambda/organization.zip
 
   OrgLambdaPermissions:
     Condition: IsManagementAccount
