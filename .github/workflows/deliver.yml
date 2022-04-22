@@ -60,6 +60,9 @@ jobs:
   Commercial-Scripts:
     name: Commercial - Deliver Scripts to S3
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
     - name: Checkout Project
       uses: actions/checkout@v2
