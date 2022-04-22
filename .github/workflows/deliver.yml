@@ -1,0 +1,94 @@
+---
+name: "Deliver Prod Resources to S3"
+
+# Trigger when commits are pushed to the master branch
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+env:
+
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_DEFAULT_OUTPUT: json
+  AWS_CFN_BUCKET: rwickit-demo
+  AWS_BUCKET_PREFIX: validation-conformance-pack
+  AWS_ACCESS_KEY_ID: ${{ secrets.DELIVER_AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.DELIVER_AWS_SECRET_ACCESS_KEY }}
+  CFN_DIR: cloudformation
+  LAMB_DIR: lambda
+  cfn_lambda: cloudformation
+  org_lambda: organization
+
+jobs:
+
+  templates:
+    name: Deliver CloudFormation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{env.AWS_DEFAULT_REGION}}
+    - name: Sync to S3
+      id: sync-s3
+      run: |
+        aws s3 sync ${{ env.CFN_DIR }} s3://${{ env.AWS_CFN_BUCKET }}/${{ env.AWS_BUCKET_PREFIX }} --region ${{ env.AWS_DEFAULT_REGION }}
+
+    lambda-cloudformation:
+    name: CfnFunction
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Rename Script
+      run: mv ${{ env.LAMB_DIR }}/${{ env.cfn_lambda }}.py ${{ env.LAMB_DIR }}/index.py
+    - name: Zip Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: ${{ env.cfn_lambda }}.zip
+        directory: ${{ env.LAMB_DIR }}
+        path: index.py
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{env.AWS_DEFAULT_REGION}}
+    - name: Sync to S3
+      id: sync-s3
+      run: |
+        aws s3 cp ${{ env.LAMB_DIR }}/${{ env.cfn_lambda }}.zip s3://${{ env.AWS_CFN_BUCKET }}/${{ env.AWS_BUCKET_PREFIX }}/${{ env.cfn_lambda }}.zip --region ${{ env.AWS_DEFAULT_REGION }}
+
+  lambda-organization:
+    name: OrgFunction
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Rename Script
+      run: mv ${{ env.LAMB_DIR }}/${{ env.org_lambda }}.py ${{ env.LAMB_DIR }}/index.py
+    - name: Zip Function
+      uses: TheDoctor0/zip-release@0.4.1
+      with:
+        type: zip
+        filename: ${{ env.org_lambda }}.zip
+        directory: ${{ env.LAMB_DIR }}
+        path: index.py
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{env.AWS_DEFAULT_REGION}}
+    - name: Sync to S3
+      id: sync-s3
+      run: |
+        aws s3 cp ${{ env.LAMB_DIR }}/${{ env.org_lambda }}.zip s3://${{ env.AWS_CFN_BUCKET }}/${{ env.AWS_BUCKET_PREFIX }}/${{ env.org_lambda }}.zip --region ${{ env.AWS_DEFAULT_REGION }}

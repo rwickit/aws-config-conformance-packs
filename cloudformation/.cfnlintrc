@@ -1,0 +1,3 @@
+ignore_checks:
+  # Disable rule ES3030
+  - ES3030

@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Management Account Organizations Validation Conformance Pack'
+
+Metadata:
+  cfn_nag:
+    rules_to_suppress:
+      - id: E3030
+        reason: Use of AWS::::Account required for Custom Config Rule
+
+Parameters:
+
+  OrgFunctionArn:
+    Type: String
+
+  MaximumExecutionFrequency:
+    Type: String
+    Default: One_Hour
+    AllowedValues:
+      - One_Hour
+      - Three_Hours
+      - Six_Hours
+      - Twelve_Hours
+      - TwentyFour_Hours
+
+Resources:
+
+  ## SCPs
+  MspScp:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: scp-Test-SCP
+      InputParameters:
+        resource: 'scp'
+        scp-name: 'Test-SCP'
+      Description: Checks if SCP is deployed and attached to Org Root OU
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::::Account
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: !Ref OrgFunctionArn
+        SourceDetails:
+          - EventSource: aws.config
+            MessageType: ScheduledNotification
+            MaximumExecutionFrequency: !Ref MaximumExecutionFrequency
