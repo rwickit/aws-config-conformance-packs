@@ -5,90 +5,114 @@ name: "Deliver Prod Resources to S3"
 
 on:
   push:
-    branches:
-      - master
-      - main
+    # branches:
+    #   - master
+    #   - main
 
 env:
 
-  AWS_DEFAULT_REGION: us-east-1
-  AWS_DEFAULT_OUTPUT: json
-  AWS_CFN_BUCKET: rwickit-demo
-  AWS_BUCKET_PREFIX: validation-conformance-pack
-  AWS_ACCESS_KEY_ID: ${{ secrets.DELIVER_AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.DELIVER_AWS_SECRET_ACCESS_KEY }}
-  CFN_DIR: cloudformation
-  LAMB_DIR: lambda
-  cfn_lambda: cloudformation
-  org_lambda: organization
+  ## GLOBAL VARIABLES
+
+  ### Commercial
+  COM_NAME: ${{ secrets.COM_AWS_ROLE_SESSION_NAME }}
+  COM_DURATION: ${{ secrets.COM_AWS_ROLE_SESSION_DURATION }}
+  COM_REGION: ${{ secrets.COM_AWS_DEFAULT_REGION }}
+  COM_ROLE: ${{ secrets.COM_ROLE_ARN_DELIVERY }}
+
+  ### GovCloud
+  GOV_NAME: ${{ secrets.GOV_AWS_ROLE_SESSION_NAME }}
+  GOV_DURATION: ${{ secrets.GOV_AWS_ROLE_SESSION_DURATION }}
+  GOV_REGION: ${{ secrets.GOV_AWS_DEFAULT_REGION }}
+  GOV_ROLE: ${{ secrets.GOV_ROLE_ARN_DELIVERY }}
+
+  ## PROJECT VARIABLES
+  BUCKET: solutions.rwick.it
+  PREFIX: config-conformance-packs
+  TEMPLATES: cloudformation
+  SCRIPTS: lambda
 
 jobs:
 
-  templates:
-    name: Deliver CloudFormation
+  ## COMMERCIAL JOBS
+
+  Commercial-Templates:
+    name: Commercial - Deliver Templates to S3
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-    - name: Checkout
-      uses: actions/checkout@master
-    - name: Configure AWS credentials
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{env.AWS_DEFAULT_REGION}}
-    - name: Sync to S3
-      id: sync-s3
-      run: |
-        aws s3 sync ${{ env.CFN_DIR }} s3://${{ env.AWS_CFN_BUCKET }}/${{ env.AWS_BUCKET_PREFIX }} --region ${{ env.AWS_DEFAULT_REGION }}
+        role-session-name: ${{ env.COM_NAME }}
+        role-duration-seconds: ${{ env.COM_DURATION }}
+        aws-region: ${{ env.COM_REGION }}
+        role-to-assume: ${{ env.COM_ROLE }}
 
-    lambda-cloudformation:
-    name: CfnFunction
+    - name: Sync Templates to S3
+      run: |
+        aws s3 sync ${{ env.TEMPLATES }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.TEMPLATES }}
+
+
+  Commercial-Scripts:
+    name: Commercial - Deliver Scripts to S3
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@master
-    - name: Rename Script
-      run: mv ${{ env.LAMB_DIR }}/${{ env.cfn_lambda }}.py ${{ env.LAMB_DIR }}/index.py
-    - name: Zip Function
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.COM_NAME }}
+        role-duration-seconds: ${{ env.COM_DURATION }}
+        aws-region: ${{ env.COM_REGION }}
+        role-to-assume: ${{ env.COM_ROLE }}
+
+    - name: Zip CloudFormation Function
       uses: TheDoctor0/zip-release@0.4.1
       with:
         type: zip
-        filename: ${{ env.cfn_lambda }}.zip
-        directory: ${{ env.LAMB_DIR }}
-        path: index.py
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{env.AWS_DEFAULT_REGION}}
-    - name: Sync to S3
-      id: sync-s3
-      run: |
-        aws s3 cp ${{ env.LAMB_DIR }}/${{ env.cfn_lambda }}.zip s3://${{ env.AWS_CFN_BUCKET }}/${{ env.AWS_BUCKET_PREFIX }}/${{ env.cfn_lambda }}.zip --region ${{ env.AWS_DEFAULT_REGION }}
+        filename: cloudformation.zip
+        directory: ${{ env.SCRIPTS }}/cloudformation
 
-  lambda-organization:
-    name: OrgFunction
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@master
-    - name: Rename Script
-      run: mv ${{ env.LAMB_DIR }}/${{ env.org_lambda }}.py ${{ env.LAMB_DIR }}/index.py
-    - name: Zip Function
+     - name: Zip Organizations Function
       uses: TheDoctor0/zip-release@0.4.1
       with:
         type: zip
-        filename: ${{ env.org_lambda }}.zip
-        directory: ${{ env.LAMB_DIR }}
-        path: index.py
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{env.AWS_DEFAULT_REGION}}
-    - name: Sync to S3
+        filename: organization.zip
+        directory: ${{ env.SCRIPTS }}/organization
+
+    - name: Sync Scripts to S3
       id: sync-s3
       run: |
-        aws s3 cp ${{ env.LAMB_DIR }}/${{ env.org_lambda }}.zip s3://${{ env.AWS_CFN_BUCKET }}/${{ env.AWS_BUCKET_PREFIX }}/${{ env.org_lambda }}.zip --region ${{ env.AWS_DEFAULT_REGION }}
+        aws s3 sync ${{ env.SCRIPTS }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.SCRIPTS }}
+
+
+  ## GOVCLOUD JOBS
+
+  GovCloud:
+    name: GovCloud - Deliver Templates to S3
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout Project
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-session-name: ${{ env.GOV_NAME }}
+        role-duration-seconds: ${{ env.GOV_DURATION }}
+        aws-region: ${{ env.GOV_REGION }}
+        role-to-assume: ${{ env.GOV_ROLE }}
+
+    - name: Sync Templates S3
+      run: |
+        aws s3 sync ${{ env.TEMPLATES }} s3://${{ env.BUCKET }}/${{ env.PREFIX }}/${{ env.TEMPLATES }}
