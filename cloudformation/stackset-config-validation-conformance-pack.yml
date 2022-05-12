@@ -33,7 +33,7 @@ Resources:
   ConformancePackStackSet:
     Type: AWS::CloudFormation::StackSet
     Properties:
-      StackSetName: validation-conformance-pack
+      StackSetName: !Ref ProjectName
       Description: Validation Conformance Pack - DO NOT DELETE
       PermissionModel: SERVICE_MANAGED
       AutoDeployment:
@@ -49,7 +49,7 @@ Resources:
           DeploymentTargets:
             OrganizationalUnitIds:
               - !Ref DeploymentOUs
-      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/${ProjectName}/cloudformation/validation-conformance-pack.yml
+      TemplateURL: !Sub https://${ResourceBucket}.s3.amazonaws.com/${ProjectName}/cloudformation/${ProjectName}.yml
       Parameters:
         - ParameterKey: AccountType
           ParameterValue: workload
